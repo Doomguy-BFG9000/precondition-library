@@ -16,6 +16,20 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+HELD_OUT_SEED_BASE = 3000
+"""The first seed that builds a **held-out** state (issue #263).
+
+Below it every seed builds a shipped state -- the ones admission, tuning and the
+evaluation draw from -- and an injector that declares a held-out axis must return its
+shipped value. At or above it the injector may draw the axis, so a state built from such
+a seed is one no admission has ever tested a program against.
+
+The constant lives here rather than in `bench.splits` because the *injectors* need it and
+`tasks` may not import `bench`; `bench.splits.HELD_OUT_SEEDS` is the plan block that uses
+it, and `bench.splits` asserts the two agree. It is fixed with the base tree in mind: the
+shipped blocks are 0-4, 1000-1015 and 2000-2039, and admission's seed search stops at 64
+(`agents.compile._SEED_SEARCH_LIMIT`), so no shipped state can land here by accident."""
+
 
 @dataclass(frozen=True)
 class GroundTruth:
@@ -48,6 +62,16 @@ class FaultSpec:
     Checked by `tasks.invariants.recorded_state_intact` against the committed diff from the
     recorded base, so it shares the one fact that already covers the recorded refs.
     """
+
+    def change_surface_for_seed(self, seed: int) -> tuple[str, ...]:
+        """The surface a resolution of the state injected at `seed` may commit.
+
+        `change_surface` for every fault whose injector writes the same paths at every seed,
+        which is all of them but `dirty_tree`: its held-out seeds write other paths (issue
+        #263), and grading one against the shipped surface would refuse a correct fix, while
+        grading every seed against the union would admit a wrong one.
+        """
+        return self.change_surface
 
     def inject(self, seed: int, sandbox) -> None:
         """Mutate `sandbox` into the faulty state. Same seed, same state.
