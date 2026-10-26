@@ -216,6 +216,8 @@ def test_dirty_tree_gold_passes_and_discarding_the_work_fails(
 
         box = build_sandbox(seed, ["dirty_tree"])
         try:
+            assert box.recorded["untracked_path"] == paths.untracked_path
+            assert box.recorded["work-path"] in (paths.upstream_file, paths.tracked_file)
             program = _gold("dirty_tree", box)
             result = replay(program, box)
             verdict = _grade("dirty_tree", seed, box)
