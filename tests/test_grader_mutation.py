@@ -81,3 +81,41 @@ def test_the_real_targets_and_selection_exist() -> None:
     for path in gm.SELECTION:
         assert (gm.REPOSITORY / path).is_file(), path
     assert len(gm.mutants()) > 100
+
+
+def test_a_mutant_inside_a_verdicts_message_is_marked_and_left_out_of_the_score(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "toy.py").write_text(
+        "def check(sha, n):\n    return Verdict(ok=n == 1, detail=f'{sha[:12]} {n or 0}')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(gm, "REPOSITORY", tmp_path)
+    monkeypatch.setattr(gm, "TARGETS", {"toy.py": ("check",)})
+    marked = {(m.kind, m.in_message) for m in gm.mutants()}
+    assert marked == {
+        ("Eq -> NotEq", False),
+        ("1 -> 2", False),
+        ("1 -> 0", False),
+        ("12 -> 13", True),
+        ("12 -> 11", True),
+        ("or -> and", True),
+        ("0 -> 1", True),
+        ("0 -> -1", True),
+    }
+    outcome = {"Eq -> NotEq": "killed", "1 -> 2": "survived", "1 -> 0": "killed"}
+    results = [
+        gm.MutantResult(
+            path="toy.py",
+            function="check",
+            line=2,
+            kind=m.kind,
+            in_message=m.in_message,
+            outcome=outcome.get(m.kind, "survived"),
+            seconds=0.0,
+        )
+        for m in gm.mutants()
+    ]
+    report = gm.summarise(results, 1.0)
+    assert (report.mutants, report.message_only, report.survived) == (8, 5, 6)
+    assert report.score == pytest.approx(2 / 3)

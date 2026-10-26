@@ -93,6 +93,9 @@ class Mutant:
     """What changed, e.g. `== -> !=`."""
     index: int
     """Which mutable node in the function, in walk order, so the mutant can be rebuilt."""
+    in_message: bool = False
+    """The node is inside an f-string or a `detail=` argument: it can change what a verdict
+    says, never whether it passes, so it is reported apart from the score."""
 
 
 class MutantResult(BaseModel):
@@ -100,6 +103,7 @@ class MutantResult(BaseModel):
     function: str
     line: int
     kind: str
+    in_message: bool = False
     outcome: str
     """`killed` (a test failed), `survived` (every test passed), or `timeout` (counted killed)."""
     seconds: float
@@ -112,7 +116,10 @@ class MutationReport(BaseModel):
     killed: int
     survived: int
     timeout: int
+    message_only: int = 0
+    """Mutants inside a verdict's message, whatever their outcome; not in the score."""
     score: float
+    """Killed or timed out, over every mutant that can change a verdict."""
     results: list[MutantResult]
 
 
@@ -138,12 +145,27 @@ def _mutations(node: ast.AST) -> list[str]:
     return []
 
 
+def _message_nodes(function: ast.FunctionDef) -> set[int]:
+    """The ids of every node inside an f-string or a `detail=` argument of `function`."""
+    inside: set[int] = set()
+    for node in ast.walk(function):
+        roots: list[ast.AST] = []
+        if isinstance(node, ast.JoinedStr):
+            roots.append(node)
+        if isinstance(node, ast.keyword) and node.arg == "detail":
+            roots.append(node.value)
+        for root in roots:
+            inside.update(id(child) for child in ast.walk(root))
+    return inside
+
+
 def mutants() -> list[Mutant]:
     """Every mutant of every target, in a fixed order."""
     found = []
     for path, names in TARGETS.items():
         tree = ast.parse((REPOSITORY / path).read_text(encoding="utf-8"))
         for function in _functions(tree, names):
+            messages = _message_nodes(function)
             for index, node in enumerate(ast.walk(function)):
                 for kind in _mutations(node):
                     found.append(
@@ -153,9 +175,49 @@ def mutants() -> list[Mutant]:
                             line=getattr(node, "lineno", function.lineno),
                             kind=kind,
                             index=index,
+                            in_message=id(node) in messages,
                         )
                     )
     return found
+
+
+def summarise(results: Sequence[MutantResult], baseline_seconds: float) -> MutationReport:
+    """The report over `results`: the score leaves out message-only mutants."""
+    scored = [r for r in results if not r.in_message]
+    caught = sum(r.outcome in ("killed", "timeout") for r in scored)
+    return MutationReport(
+        selection=list(SELECTION),
+        baseline_seconds=baseline_seconds,
+        mutants=len(results),
+        killed=sum(r.outcome == "killed" for r in results),
+        survived=sum(r.outcome == "survived" for r in results),
+        timeout=sum(r.outcome == "timeout" for r in results),
+        message_only=len(results) - len(scored),
+        score=caught / len(scored) if scored else 0.0,
+        results=list(results),
+    )
+
+
+def classify(report: Path) -> MutationReport:
+    """Mark a report's message-only mutants from the current source, and rescore it.
+
+    For a report written before mutants carried `in_message`: each result is matched to the
+    mutant listed at the same path, function, line and kind, so the source must be the one the
+    report was run on.
+    """
+    old = MutationReport.model_validate_json(report.read_text(encoding="utf-8"))
+    listed: dict[tuple[str, str, int, str], list[bool]] = {}
+    for mutant in mutants():
+        key = (mutant.path, mutant.function, mutant.line, mutant.kind)
+        listed.setdefault(key, []).append(mutant.in_message)
+    seen: dict[tuple[str, str, int, str], int] = {}
+    results = []
+    for result in old.results:
+        key = (result.path, result.function, result.line, result.kind)
+        position = seen.get(key, 0)
+        seen[key] = position + 1
+        results.append(result.model_copy(update={"in_message": listed[key][position]}))
+    return summarise(results, old.baseline_seconds)
 
 
 class _Apply(ast.NodeTransformer):
@@ -248,6 +310,7 @@ def run(out: Path, *, workers: int = 4, limit: int | None = None) -> MutationRep
                 function=mutant.function,
                 line=mutant.line,
                 kind=mutant.kind,
+                in_message=mutant.in_message,
                 outcome=outcome,
                 seconds=round(took, 1),
             )
@@ -255,19 +318,7 @@ def run(out: Path, *, workers: int = 4, limit: int | None = None) -> MutationRep
         print(
             f"{outcome:8} {mutant.path}:{mutant.line} {mutant.function} {mutant.kind}", flush=True
         )
-    killed = sum(r.outcome == "killed" for r in results)
-    timed_out = sum(r.outcome == "timeout" for r in results)
-    survived = sum(r.outcome == "survived" for r in results)
-    report = MutationReport(
-        selection=list(SELECTION),
-        baseline_seconds=round(seconds, 1),
-        mutants=len(results),
-        killed=killed,
-        survived=survived,
-        timeout=timed_out,
-        score=(killed + timed_out) / len(results) if results else 0.0,
-        results=results,
-    )
+    report = summarise(results, round(seconds, 1))
     out.mkdir(parents=True)
     (out / "report.json").write_text(report.model_dump_json(indent=2) + "\n", encoding="utf-8")
     return report
@@ -278,7 +329,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--list", action="store_true", help="list the mutants and stop")
+    parser.add_argument(
+        "--classify",
+        type=Path,
+        default=None,
+        metavar="REPORT",
+        help="mark an older report's message-only mutants and rescore it, in place",
+    )
     args = parser.parse_args(argv)
+    if args.classify is not None:
+        report = classify(args.classify)
+        args.classify.write_text(report.model_dump_json(indent=2) + "\n", encoding="utf-8")
+        print(json.dumps({k: v for k, v in report.model_dump().items() if k != "results"}))
+        return 0
     if args.list:
         listed = mutants()
         for mutant in listed:
