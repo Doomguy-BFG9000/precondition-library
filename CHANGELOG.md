@@ -12,6 +12,12 @@ measured result, at pair level; everything before it is design and apparatus. Se
 
 ### Added
 
+- **Real lock-file merges, stage A (#296, pre-registered).** `bench.real_merges` mines,
+  labels and dispatches merge commits from six public repositories, with the maintainer's
+  commit as the label. **No positive is expressible: 0 of 30** maintainer merges reproduce
+  either lock-file resolution the intent defines, and 18 regenerated the file. Every fire by
+  every dispatcher is therefore wrong. The figures are descriptive, as §7 requires.
+  `results/real-merges-2026-10-26/stage-A/`.
 - **The real-merge comparison is pre-registered (ADR-0048, #298).**
   `docs/preregistration/real-merges.md` fixes the hypotheses, the maintainer's merge as the label,
   the sample, and what would falsify the claim, before any real-merge case is built.
