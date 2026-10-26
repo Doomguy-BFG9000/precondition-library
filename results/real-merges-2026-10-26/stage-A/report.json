@@ -1,0 +1,211 @@
+{
+  "stage": "A",
+  "positives": 30,
+  "negatives": 14,
+  "expressible": 0,
+  "descriptive": {
+    "other": 8,
+    "regenerated": 18,
+    "took local": 3,
+    "took upstream": 1
+  },
+  "rule_disagreements": [
+    {
+      "index": 4,
+      "repo": "sharkdp/bat",
+      "merge": "da1016662588cae98aeb96b2ec570b14f02f9c62",
+      "rule": "take_upstream",
+      "maintainer": [],
+      "descriptive": "regenerated"
+    },
+    {
+      "index": 12,
+      "repo": "sharkdp/fd",
+      "merge": "cdc6a37ed6f184d42ce84747568875a1abdb4af4",
+      "rule": "take_upstream",
+      "maintainer": [],
+      "descriptive": "regenerated"
+    },
+    {
+      "index": 25,
+      "repo": "helix-editor/helix",
+      "merge": "458b89e21dcf76bbf9ca6ba237bd334f4922722d",
+      "rule": "keep_local",
+      "maintainer": [],
+      "descriptive": "other"
+    },
+    {
+      "index": 40,
+      "repo": "tauri-apps/tauri",
+      "merge": "ad91e3022b3928b341287c8391f84da778a91f3a",
+      "rule": "take_upstream",
+      "maintainer": [],
+      "descriptive": "took local"
+    }
+  ],
+  "replicates": [
+    {
+      "library": "results/replicates-2026-10-05/run-11/library-two-sided",
+      "arm3": {
+        "threshold": null,
+        "coverage": {
+          "numerator": 19,
+          "denominator": 44
+        },
+        "mismatch": {
+          "numerator": 19,
+          "denominator": 19
+        },
+        "mismatch_interval": {
+          "low": 0.8318156346315496,
+          "high": 1.0
+        }
+      },
+      "arm2_matched": {
+        "threshold": 0.08085106382978724,
+        "coverage": {
+          "numerator": 19,
+          "denominator": 44
+        },
+        "mismatch": {
+          "numerator": 19,
+          "denominator": 19
+        },
+        "mismatch_interval": {
+          "low": 0.8318156346315496,
+          "high": 1.0
+        }
+      },
+      "control_matched": {
+        "threshold": 1.0,
+        "coverage": {
+          "numerator": 30,
+          "denominator": 44
+        },
+        "mismatch": {
+          "numerator": 30,
+          "denominator": 30
+        },
+        "mismatch_interval": {
+          "low": 0.8864829086095221,
+          "high": 1.0
+        }
+      },
+      "arm3_fires_on_positives": 5
+    },
+    {
+      "library": "results/replicates-2026-10-05/run-12/library-two-sided",
+      "arm3": {
+        "threshold": null,
+        "coverage": {
+          "numerator": 14,
+          "denominator": 44
+        },
+        "mismatch": {
+          "numerator": 14,
+          "denominator": 14
+        },
+        "mismatch_interval": {
+          "low": 0.7846829880728186,
+          "high": 1.0
+        }
+      },
+      "arm2_matched": {
+        "threshold": 0.08365019011406843,
+        "coverage": {
+          "numerator": 14,
+          "denominator": 44
+        },
+        "mismatch": {
+          "numerator": 14,
+          "denominator": 14
+        },
+        "mismatch_interval": {
+          "low": 0.7846829880728186,
+          "high": 1.0
+        }
+      },
+      "control_matched": {
+        "threshold": 1.0,
+        "coverage": {
+          "numerator": 30,
+          "denominator": 44
+        },
+        "mismatch": {
+          "numerator": 30,
+          "denominator": 30
+        },
+        "mismatch_interval": {
+          "low": 0.8864829086095221,
+          "high": 1.0
+        }
+      },
+      "arm3_fires_on_positives": 0
+    },
+    {
+      "library": "results/replicates-2026-10-05/run-13/library-two-sided",
+      "arm3": {
+        "threshold": null,
+        "coverage": {
+          "numerator": 44,
+          "denominator": 44
+        },
+        "mismatch": {
+          "numerator": 44,
+          "denominator": 44
+        },
+        "mismatch_interval": {
+          "low": 0.9197016822179859,
+          "high": 1.0
+        }
+      },
+      "arm2_matched": {
+        "threshold": 0.019184069936862554,
+        "coverage": {
+          "numerator": 44,
+          "denominator": 44
+        },
+        "mismatch": {
+          "numerator": 44,
+          "denominator": 44
+        },
+        "mismatch_interval": {
+          "low": 0.9197016822179859,
+          "high": 1.0
+        }
+      },
+      "control_matched": {
+        "threshold": 1.0,
+        "coverage": {
+          "numerator": 30,
+          "denominator": 44
+        },
+        "mismatch": {
+          "numerator": 30,
+          "denominator": 30
+        },
+        "mismatch_interval": {
+          "low": 0.8864829086095221,
+          "high": 1.0
+        }
+      },
+      "arm3_fires_on_positives": 30
+    }
+  ],
+  "control": {
+    "threshold": null,
+    "coverage": {
+      "numerator": 30,
+      "denominator": 44
+    },
+    "mismatch": {
+      "numerator": 30,
+      "denominator": 30
+    },
+    "mismatch_interval": {
+      "low": 0.8864829086095221,
+      "high": 1.0
+    }
+  },
+  "arm3_positive_share": 0.3888888888888889
+}

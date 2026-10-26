@@ -1,0 +1,15 @@
+Real lock-file merges, stage A (#296; registered in docs/preregistration/real-merges.md)
+  positives 30, negatives 14; expressible 0/30
+  classes: {'other': 8, 'regenerated': 18, 'took local': 3, 'took upstream': 1}
+  rule against maintainer: 4 disagreements
+  results/replicates-2026-10-05/run-11/library-two-sided: arm 3 fires 19/44 (5 on positives), wrong 19
+    arm 2 at matched coverage: fires 19, wrong 19
+    control at matched coverage: fires 30, wrong 30
+  results/replicates-2026-10-05/run-12/library-two-sided: arm 3 fires 14/44 (0 on positives), wrong 14
+    arm 2 at matched coverage: fires 14, wrong 14
+    control at matched coverage: fires 30, wrong 30
+  results/replicates-2026-10-05/run-13/library-two-sided: arm 3 fires 44/44 (30 on positives), wrong 44
+    arm 2 at matched coverage: fires 44, wrong 44
+    control at matched coverage: fires 30, wrong 30
+  control at every fire: fires 30/44, wrong 30
+  arm 3's share of positives fired on (c, §8): 0.3888888888888889
