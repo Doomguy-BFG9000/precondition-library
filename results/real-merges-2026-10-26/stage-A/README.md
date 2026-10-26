@@ -117,3 +117,33 @@ positive.
 - **What a regenerating resolution would score.** None exists in the library, and adding one
   would be a change to the study. It could be made only before stage B, as an amendment that
   changes the registration and its pin (ADR-0048 decision 3).
+
+## Under Amendment 1's labels: exploratory, not evidence
+
+Stage A led to the registration's Amendment 1 (ADR-0049). Under it, a clean merge accepts
+`merge` where the maintainer's tree is the clean merge's. All 14 clean cases here qualify.
+Because this data motivated the amendment, it cannot test it. The figures below are computed
+from the committed decisions, with nothing re-dispatched, by the tests stage B will run. They are
+marked underpowered, so no verdict is drawn from them (`amendment-1-exploratory/`):
+
+```bash
+python -m precondition_library.bench.real_merges --relabel-pilot results/real-merges-2026-10-26/stage-A
+```
+
+| library | arm 3 fires / wrong | arm 2 at matched coverage, fires / wrong | H1 (arm 2 − arm 3 mismatch) | H3: fires on the 30 inexpressible conflicts, arm 3 / control |
+| --- | --- | --- | --- | --- |
+| run 11 | 19 / 8 | 19 / 17 | +0.47, interval [+0.14, +0.63] | 5 / 30 |
+| run 12 | 14 / **0** | 14 / 14 | +1.00 | **0 / 30** |
+| run 13 | 44 / 31 | 44 / 44 | +0.30, interval [+0.16, +0.50] | 30 / 30 |
+
+The control fires on 30 cases at every operating point, all of them conflicts and all wrong. Its
+matched coverage is therefore 30 whatever arm 3's is, so H2 compares unequal coverages here.
+
+- **Run 12's library is what a precondition dispatcher is meant to be.** It refused every real
+  lock-file conflict, where no resolution it has is right, and merged every clean case, which is
+  what the maintainer did.
+- **Run 13's library is not.** It fired `keep_local` on every conflict, exactly as the
+  state-reading control did.
+- **So on real states the effect depends on the build.** Whether a dispatcher refuses what it does
+  not fit depends on which library it is, not on its method alone. Stage B, on cases nobody has
+  seen, is where that is tested.

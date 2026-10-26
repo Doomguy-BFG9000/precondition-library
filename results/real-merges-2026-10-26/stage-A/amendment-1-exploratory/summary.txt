@@ -1,0 +1,35 @@
+Real lock-file merges, stage A (#296; registered in docs/preregistration/real-merges.md)
+  positives 30, negatives 14; expressible 0/30
+  classes: {'other': 8, 'regenerated': 18, 'took local': 3, 'took upstream': 1}
+  rule against maintainer: 4 disagreements
+  results/replicates-2026-10-05/run-11/library-two-sided: arm 3 fires 19/44 (5 on positives), wrong 8
+    arm 2 at matched coverage: fires 19, wrong 17
+    control at matched coverage: fires 30, wrong 30
+  results/replicates-2026-10-05/run-12/library-two-sided: arm 3 fires 14/44 (0 on positives), wrong 0
+    arm 2 at matched coverage: fires 14, wrong 14
+    control at matched coverage: fires 30, wrong 30
+  results/replicates-2026-10-05/run-13/library-two-sided: arm 3 fires 44/44 (30 on positives), wrong 31
+    arm 2 at matched coverage: fires 44, wrong 44
+    control at matched coverage: fires 30, wrong 30
+  control at every fire: fires 30/44, wrong 30
+  arm 3's share of positives fired on (c, §8): 0.3888888888888889
+  cases 44 from 6 repositories; underpowered: True
+  results/replicates-2026-10-05/run-11/library-two-sided:
+    H1: +0.474, 95% interval [+0.144, +0.625], McNemar b/c 8/1, p 0.0390625
+    H2: +0.579, 95% interval [+0.333, +0.692], McNemar b/c 0/0, p None
+    H3: +0.833, 95% interval [+0.556, +0.966], McNemar b/c 25/0, p 5.960464477539063e-08
+    rule 1 applicability: not tested: arm 3 fired 19 < 20
+  results/replicates-2026-10-05/run-12/library-two-sided:
+    H1: +1.000, 95% interval [+1.000, +1.000], McNemar b/c 10/0, p 0.001953125
+    H2: +1.000, 95% interval [+1.000, +1.000], McNemar b/c 0/0, p None
+    H3: +1.000, 95% interval [+1.000, +1.000], McNemar b/c 30/0, p 1.862645149230957e-09
+    rule 1 applicability: not tested: arm 3 fired 14 < 20
+  results/replicates-2026-10-05/run-13/library-two-sided:
+    H1: +0.295, 95% interval [+0.158, +0.500], McNemar b/c 13/0, p 0.000244140625
+    H2: +0.295, 95% interval [+0.158, +0.500], McNemar b/c 0/0, p None
+    H3: +0.000, 95% interval [+0.000, +0.000], McNemar b/c 0/0, p None
+    rule 1 applicability: tested: arm 3 fired 44
+    rule 2 arm 3's reliability: falsified: Wilson lower bound above 0.10
+    rule 3 against similarity (H1): underpowered: reported, neither supported nor refuted
+    rule 4 against reading the state (H2): underpowered: reported, neither supported nor refuted
+  supported in every replicate: H1 False, H2 False, H3 False

@@ -12,6 +12,13 @@ measured result, at pair level; everything before it is design and apparatus. Se
 
 ### Added
 
+- **The real-merge study is amended before stage B (ADR-0049).** A clean merge is now
+  labelled by the maintainer: `merge` is acceptable where their tree is the clean merge's. A
+  refusal hypothesis (H3) is added, and stage B is sized at 247 cases. Stage A, which
+  motivated the amendment, is reported under the new labels as exploratory only. Run 12's
+  library refuses all 30 real lock-file conflicts and merges every clean case without a wrong
+  fire; run 13's library and the state-reading control fire on every conflict.
+  `bench.real_merge_inference` holds the registered tests.
 - **Real lock-file merges, stage A (#296, pre-registered).** `bench.real_merges` mines,
   labels and dispatches merge commits from six public repositories, with the maintainer's
   commit as the label. **No positive is expressible: 0 of 30** maintainer merges reproduce
