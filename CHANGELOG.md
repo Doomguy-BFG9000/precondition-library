@@ -12,6 +12,12 @@ measured result, at pair level; everything before it is design and apparatus. Se
 
 ### Added
 
+- **The real-merge comparison is pre-registered (ADR-0048, #298).**
+  `docs/preregistration/real-merges.md` fixes the hypotheses, the maintainer's merge as the label,
+  the sample, and what would falsify the claim, before any real-merge case is built.
+  `bench.preregistration` pins its hash and refuses a measurement against an edited or uncommitted
+  registration. The feasibility count is committed beside it: 105 lock-file conflicts across 14
+  repositories.
 - **A state-reading control (ADR-0047, #295).** `bench.state_classifier` fits a decision tree per
   intent over generic fingerprint features, on the build's 56 states, with no model call and no
   compiled program. On Figure 1's pairs it fires 190/400 eval pairs with none wrong, matching
