@@ -56,6 +56,7 @@ commit message is not a record.
 | [ADR-0046](ADR-0046-gold-lockfile-programs-find-the-file.md) | accepted | **The gold lock-file programs find the conflicted file** instead of requiring `deps.lock` (supersedes ADR-0039 decision 4): identical on all 232 shipped combinations, and the gold sweep now grades all 40 held-out lock-file states. |
 | [ADR-0047](ADR-0047-a-state-reading-control-matches-arm-3.md) | accepted | **A state-reading control matches arm 3** on the project's own labels: a decision tree over generic fingerprint features fires 190/400 eval pairs with none wrong, and 200 held-out with none wrong where arm 3 had 8–21. Figure 1's claim is narrowed to reading the state against not reading it. |
 | [ADR-0048](ADR-0048-real-data-studies-are-pre-registered.md) | accepted | **A study on data this project did not make is pre-registered, and bound by code.** `docs/preregistration/real-merges.md` fixes the real-merge comparison (maintainer labels, pilot then confirmatory, four ordered decision rules); `bench.preregistration` pins its SHA-256 and refuses a measurement against an edited or uncommitted registration. |
+| [ADR-0049](ADR-0049-clean-merges-are-labelled-by-the-maintainer.md) | accepted | **The real-merge study is amended before stage B (Amendment 1).** A clean merge accepts `merge` where the maintainer's tree is the clean merge's; H3 (refusing inexpressible conflicts) is added; stage B is 247 cases. Written after stage A, which it says, so stage A tests nothing. |
 
 ## When to write one
 

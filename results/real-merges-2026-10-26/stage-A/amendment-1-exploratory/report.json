@@ -1,0 +1,469 @@
+{
+  "figures": {
+    "stage": "A",
+    "positives": 30,
+    "negatives": 14,
+    "expressible": 0,
+    "descriptive": {
+      "other": 8,
+      "regenerated": 18,
+      "took local": 3,
+      "took upstream": 1
+    },
+    "rule_disagreements": [
+      {
+        "index": 4,
+        "repo": "sharkdp/bat",
+        "merge": "da1016662588cae98aeb96b2ec570b14f02f9c62",
+        "rule": "take_upstream",
+        "maintainer": [],
+        "descriptive": "regenerated"
+      },
+      {
+        "index": 12,
+        "repo": "sharkdp/fd",
+        "merge": "cdc6a37ed6f184d42ce84747568875a1abdb4af4",
+        "rule": "take_upstream",
+        "maintainer": [],
+        "descriptive": "regenerated"
+      },
+      {
+        "index": 25,
+        "repo": "helix-editor/helix",
+        "merge": "458b89e21dcf76bbf9ca6ba237bd334f4922722d",
+        "rule": "keep_local",
+        "maintainer": [],
+        "descriptive": "other"
+      },
+      {
+        "index": 40,
+        "repo": "tauri-apps/tauri",
+        "merge": "ad91e3022b3928b341287c8391f84da778a91f3a",
+        "rule": "take_upstream",
+        "maintainer": [],
+        "descriptive": "took local"
+      }
+    ],
+    "replicates": [
+      {
+        "library": "results/replicates-2026-10-05/run-11/library-two-sided",
+        "arm3": {
+          "threshold": null,
+          "coverage": {
+            "numerator": 19,
+            "denominator": 44
+          },
+          "mismatch": {
+            "numerator": 8,
+            "denominator": 19
+          },
+          "mismatch_interval": {
+            "low": 0.23141620392030376,
+            "high": 0.637244485348399
+          }
+        },
+        "arm2_matched": {
+          "threshold": 0.08085106382978724,
+          "coverage": {
+            "numerator": 19,
+            "denominator": 44
+          },
+          "mismatch": {
+            "numerator": 17,
+            "denominator": 19
+          },
+          "mismatch_interval": {
+            "low": 0.686054495051583,
+            "high": 0.9706420586049034
+          }
+        },
+        "control_matched": {
+          "threshold": 1.0,
+          "coverage": {
+            "numerator": 30,
+            "denominator": 44
+          },
+          "mismatch": {
+            "numerator": 30,
+            "denominator": 30
+          },
+          "mismatch_interval": {
+            "low": 0.8864829086095221,
+            "high": 1.0
+          }
+        },
+        "arm3_fires_on_positives": 5,
+        "fires_on_inexpressible": {
+          "arm 3": 5,
+          "arm 2": 7,
+          "control": 30
+        }
+      },
+      {
+        "library": "results/replicates-2026-10-05/run-12/library-two-sided",
+        "arm3": {
+          "threshold": null,
+          "coverage": {
+            "numerator": 14,
+            "denominator": 44
+          },
+          "mismatch": {
+            "numerator": 0,
+            "denominator": 14
+          },
+          "mismatch_interval": {
+            "low": 0.0,
+            "high": 0.21531701192718142
+          }
+        },
+        "arm2_matched": {
+          "threshold": 0.08365019011406843,
+          "coverage": {
+            "numerator": 14,
+            "denominator": 44
+          },
+          "mismatch": {
+            "numerator": 14,
+            "denominator": 14
+          },
+          "mismatch_interval": {
+            "low": 0.7846829880728186,
+            "high": 1.0
+          }
+        },
+        "control_matched": {
+          "threshold": 1.0,
+          "coverage": {
+            "numerator": 30,
+            "denominator": 44
+          },
+          "mismatch": {
+            "numerator": 30,
+            "denominator": 30
+          },
+          "mismatch_interval": {
+            "low": 0.8864829086095221,
+            "high": 1.0
+          }
+        },
+        "arm3_fires_on_positives": 0,
+        "fires_on_inexpressible": {
+          "arm 3": 0,
+          "arm 2": 4,
+          "control": 30
+        }
+      },
+      {
+        "library": "results/replicates-2026-10-05/run-13/library-two-sided",
+        "arm3": {
+          "threshold": null,
+          "coverage": {
+            "numerator": 44,
+            "denominator": 44
+          },
+          "mismatch": {
+            "numerator": 31,
+            "denominator": 44
+          },
+          "mismatch_interval": {
+            "low": 0.5577952061434273,
+            "high": 0.818446391127567
+          }
+        },
+        "arm2_matched": {
+          "threshold": 0.019184069936862554,
+          "coverage": {
+            "numerator": 44,
+            "denominator": 44
+          },
+          "mismatch": {
+            "numerator": 44,
+            "denominator": 44
+          },
+          "mismatch_interval": {
+            "low": 0.9197016822179859,
+            "high": 1.0
+          }
+        },
+        "control_matched": {
+          "threshold": 1.0,
+          "coverage": {
+            "numerator": 30,
+            "denominator": 44
+          },
+          "mismatch": {
+            "numerator": 30,
+            "denominator": 30
+          },
+          "mismatch_interval": {
+            "low": 0.8864829086095221,
+            "high": 1.0
+          }
+        },
+        "arm3_fires_on_positives": 30,
+        "fires_on_inexpressible": {
+          "arm 3": 30,
+          "arm 2": 30,
+          "control": 30
+        }
+      }
+    ],
+    "control": {
+      "threshold": null,
+      "coverage": {
+        "numerator": 30,
+        "denominator": 44
+      },
+      "mismatch": {
+        "numerator": 30,
+        "denominator": 30
+      },
+      "mismatch_interval": {
+        "low": 0.8864829086095221,
+        "high": 1.0
+      }
+    },
+    "arm3_positive_share": 0.3888888888888889
+  },
+  "repositories": [
+    {
+      "repo": "sharkdp/bat",
+      "url": "https://github.com/sharkdp/bat",
+      "default_branch": "master",
+      "tip": "a9aa73d215455a479f072da75dd39f19826acfea",
+      "licence": "LICENSE-APACHE: Apache; LICENSE-MIT: MIT",
+      "two_parent_merges": 543,
+      "positives": 5,
+      "negatives": 5,
+      "exclusions": 0
+    },
+    {
+      "repo": "sharkdp/fd",
+      "url": "https://github.com/sharkdp/fd",
+      "default_branch": "master",
+      "tip": "c44735ec0f130c2486afe9c976937c03b57a8c62",
+      "licence": "LICENSE-APACHE: Apache; LICENSE-MIT: MIT",
+      "two_parent_merges": 451,
+      "positives": 3,
+      "negatives": 3,
+      "exclusions": 0
+    },
+    {
+      "repo": "alacritty/alacritty",
+      "url": "https://github.com/alacritty/alacritty",
+      "default_branch": "master",
+      "tip": "542147067dd016fc5f49120ef0ba605a98a4e3a7",
+      "licence": "LICENSE-APACHE: Apache; LICENSE-MIT: MIT",
+      "two_parent_merges": 39,
+      "positives": 1,
+      "negatives": 1,
+      "exclusions": 0
+    },
+    {
+      "repo": "python-poetry/poetry",
+      "url": "https://github.com/python-poetry/poetry",
+      "default_branch": "main",
+      "tip": "1fe5e0a57928572eb1d08f83b0cf0179043280dd",
+      "licence": "LICENSE: MIT",
+      "two_parent_merges": 131,
+      "positives": 6,
+      "negatives": 1,
+      "exclusions": 0
+    },
+    {
+      "repo": "helix-editor/helix",
+      "url": "https://github.com/helix-editor/helix",
+      "default_branch": "master",
+      "tip": "ba40e547426b0f9896c8bdc699a4ab11f2b37dbc",
+      "licence": "LICENSE: MPL",
+      "two_parent_merges": 73,
+      "positives": 1,
+      "negatives": 1,
+      "exclusions": 0
+    },
+    {
+      "repo": "tauri-apps/tauri",
+      "url": "https://github.com/tauri-apps/tauri",
+      "default_branch": "dev",
+      "tip": "0ed2998421652800a1e74b067eadf605f46e4124",
+      "licence": "LICENSE-APACHE-2.0: Apache; LICENSE-MIT: MIT; LICENSE.spdx: unrecognised",
+      "two_parent_merges": 57,
+      "positives": 14,
+      "negatives": 3,
+      "exclusions": 0
+    }
+  ],
+  "cases": 44,
+  "repositories_with_a_case": 6,
+  "underpowered": true,
+  "verdicts": [
+    {
+      "library": "results/replicates-2026-10-05/run-11/library-two-sided",
+      "h1": {
+        "statistic": 0.4736842105263158,
+        "interval": {
+          "low": 0.14393939393939392,
+          "high": 0.625
+        },
+        "discordant": [
+          8,
+          1
+        ],
+        "p_value": 0.0390625,
+        "resamples": 2000,
+        "skipped": 0
+      },
+      "h2": {
+        "statistic": 0.5789473684210527,
+        "interval": {
+          "low": 0.33333333333333337,
+          "high": 0.6923076923076923
+        },
+        "discordant": [
+          0,
+          0
+        ],
+        "p_value": null,
+        "resamples": 2000,
+        "skipped": 0
+      },
+      "h3": {
+        "statistic": 0.8333333333333334,
+        "interval": {
+          "low": 0.5555555555555556,
+          "high": 0.9655172413793104
+        },
+        "discordant": [
+          25,
+          0
+        ],
+        "p_value": 5.960464477539063e-8,
+        "resamples": 2000,
+        "skipped": 0
+      },
+      "decisions": [
+        {
+          "rule": "1 applicability",
+          "outcome": "not tested: arm 3 fired 19 < 20"
+        }
+      ]
+    },
+    {
+      "library": "results/replicates-2026-10-05/run-12/library-two-sided",
+      "h1": {
+        "statistic": 1.0,
+        "interval": {
+          "low": 1.0,
+          "high": 1.0
+        },
+        "discordant": [
+          10,
+          0
+        ],
+        "p_value": 0.001953125,
+        "resamples": 2000,
+        "skipped": 0
+      },
+      "h2": {
+        "statistic": 1.0,
+        "interval": {
+          "low": 1.0,
+          "high": 1.0
+        },
+        "discordant": [
+          0,
+          0
+        ],
+        "p_value": null,
+        "resamples": 2000,
+        "skipped": 0
+      },
+      "h3": {
+        "statistic": 1.0,
+        "interval": {
+          "low": 1.0,
+          "high": 1.0
+        },
+        "discordant": [
+          30,
+          0
+        ],
+        "p_value": 1.862645149230957e-9,
+        "resamples": 2000,
+        "skipped": 0
+      },
+      "decisions": [
+        {
+          "rule": "1 applicability",
+          "outcome": "not tested: arm 3 fired 14 < 20"
+        }
+      ]
+    },
+    {
+      "library": "results/replicates-2026-10-05/run-13/library-two-sided",
+      "h1": {
+        "statistic": 0.2954545454545454,
+        "interval": {
+          "low": 0.1578947368421053,
+          "high": 0.5
+        },
+        "discordant": [
+          13,
+          0
+        ],
+        "p_value": 0.000244140625,
+        "resamples": 2000,
+        "skipped": 0
+      },
+      "h2": {
+        "statistic": 0.2954545454545454,
+        "interval": {
+          "low": 0.1578947368421053,
+          "high": 0.5
+        },
+        "discordant": [
+          0,
+          0
+        ],
+        "p_value": null,
+        "resamples": 2000,
+        "skipped": 0
+      },
+      "h3": {
+        "statistic": 0.0,
+        "interval": {
+          "low": 0.0,
+          "high": 0.0
+        },
+        "discordant": [
+          0,
+          0
+        ],
+        "p_value": null,
+        "resamples": 2000,
+        "skipped": 0
+      },
+      "decisions": [
+        {
+          "rule": "1 applicability",
+          "outcome": "tested: arm 3 fired 44"
+        },
+        {
+          "rule": "2 arm 3's reliability",
+          "outcome": "falsified: Wilson lower bound above 0.10"
+        },
+        {
+          "rule": "3 against similarity (H1)",
+          "outcome": "underpowered: reported, neither supported nor refuted"
+        },
+        {
+          "rule": "4 against reading the state (H2)",
+          "outcome": "underpowered: reported, neither supported nor refuted"
+        }
+      ]
+    }
+  ],
+  "h1_supported": false,
+  "h2_supported": false,
+  "h3_supported": false
+}
