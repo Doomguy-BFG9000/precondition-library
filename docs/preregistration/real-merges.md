@@ -259,4 +259,65 @@ reported.
 
 ## Amendments
 
-None.
+### Amendment 1 (2026-10-26, before stage B)
+
+**What prompted it, stated plainly: stage A's results.** This amendment was written after stage A
+was measured (`results/real-merges-2026-10-26/stage-A/`), and because of what it showed. So
+stage A tests nothing under either the original text or this one. Stage B's cases are mined only
+after this amendment is committed and pinned, and nothing about them has been seen. Where this
+amendment and the sections above disagree, this amendment governs stage B. The original text is
+left in place, so the change can be read against it.
+
+**Why.** §3.3 made a negative a clean merge, on which "the correct decision is not to fire".
+That was a mistake in the design, not a finding. On each of stage A's 14 clean merges, the
+maintainer's merge commit has exactly the tree `git merge-tree` computes for its parents. So
+firing `merge` reproduces what the maintainer did, and the original text scored it wrong. Under
+that rule, and with no lock-file conflict expressible (0 of 30), every fire by every dispatcher
+was wrong, and H1 and H2 had no answer.
+
+**A1. Two kinds of case.** §3.2's positives are renamed **conflicted cases**. §3.3's negatives
+are renamed **clean cases**, selected exactly as §3.3 says.
+
+**A2. A clean case is labelled by the maintainer too** (replacing §3.3's last sentence and
+extending §4). `merge` is acceptable on a clean case if the merge commit's tree equals
+`git merge-tree --write-tree` of its two parents; otherwise the acceptable set is empty. Only
+`merge` is acceptable: a rebase can reach the same tree, but the maintainer chose to merge. Every
+resolution named `merge`, in any intent, counts as `merge`. Conflicted cases are labelled as §4
+says, unchanged.
+
+**A3. A third hypothesis, about refusal.**
+
+- **H3 (secondary).** On conflicted cases whose acceptable set is empty, arm 3 fires less often
+  than the state-reading control. Both are read at the operating point H2 compares them at (arm
+  3's coverage).
+- **Test.** An exact two-sided McNemar test on those cases, and a 95% repository-clustered
+  bootstrap interval for the difference in fire rates, as §7 does.
+- **Reporting.** Each dispatcher's fire rate on those cases is reported with its Wilson interval.
+
+H1 and H2 are unchanged in form. Under A2 they are now measured over both kinds of case, with
+the maintainer's label on each.
+
+**A4. Stage B's size** (replacing §8's formula, whose arithmetic assumed positives only). In
+stage A, arm 3 fired on 77 of the 132 case-replicate decisions, `c = 0.583`. Stage B therefore
+mines **`ceil(144 / 0.583)` = 247 cases**, conflicted and clean together, from at least 8
+repositories. No repository may contribute more than 25% of the cases; past that share, a
+repository's most recent cases are kept, with conflicted and clean in equal number. §8's
+underpowered rule stands.
+
+**A5. More repositories for stage B, named now and not counted.** These are appended to §3.1's
+confirmatory list, in this order, after `servo/servo`:
+
+11. [`jupyter-widgets/ipywidgets`](https://github.com/jupyter-widgets/ipywidgets)
+12. [`bokeh/bokeh`](https://github.com/bokeh/bokeh)
+13. [`holoviz/panel`](https://github.com/holoviz/panel)
+14. [`pypa/pipenv`](https://github.com/pypa/pipenv)
+15. [`gfx-rs/wgpu`](https://github.com/gfx-rs/wgpu)
+16. [`wasmerio/wasmer`](https://github.com/wasmerio/wasmer)
+17. [`paritytech/substrate`](https://github.com/paritytech/substrate)
+18. [`ruffle-rs/ruffle`](https://github.com/ruffle-rs/ruffle)
+
+**A6. Decision rule 1** (§9) reads "fewer than 20 of a replicate's cases", not "positives".
+
+**A7. Stage A under these labels is exploratory.** Stage A's figures are recomputed under A2 and
+reported beside the registered ones, labelled exploratory. They cannot support or refute any
+hypothesis.

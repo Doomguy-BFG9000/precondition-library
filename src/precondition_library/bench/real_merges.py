@@ -48,10 +48,25 @@ from ..sandbox import _SANDBOX_DIR, RealHost, Sandbox, fetch_real_host, run_git
 from ..signatures import StateFingerprint, TaskSignature
 from ..tasks.faults.lockfile_conflict import INTENT
 from .admit_set import admit_seeds
-from .coverage import OperatingPoint, PairOutcome, matched_comparison, operating_point, sweep
+from .coverage import (
+    OperatingPoint,
+    PairOutcome,
+    _fires,
+    matched_comparison,
+    operating_point,
+    sweep,
+)
 from .heldout import HELD_OUT_FAULTS
 from .library_pairs import _decide, _measured_intents, _unthresholded
 from .preregistration import REPOSITORY, require
+from .real_merge_inference import (
+    Clustered,
+    Decision,
+    Inference,
+    matched_test,
+    refusal_test,
+)
+from .real_merge_inference import decide as decide_rules
 from .rescore import scorer
 from .state_classifier import StateClassifier, _states
 
@@ -78,8 +93,16 @@ CONFIRMATORY = (
     "nushell/nushell",
     "rust-lang/cargo",
     "servo/servo",
+    "jupyter-widgets/ipywidgets",
+    "bokeh/bokeh",
+    "holoviz/panel",
+    "pypa/pipenv",
+    "gfx-rs/wgpu",
+    "wasmerio/wasmer",
+    "paritytech/substrate",
+    "ruffle-rs/ruffle",
 )
-"""Stage B's repositories, in the registration's order (§3.1)."""
+"""Stage B's repositories, in the registration's order: §3.1's ten, then Amendment 1's eight."""
 
 LOCK_FILES = (
     "package-lock.json",
@@ -214,6 +237,8 @@ def _merge_bases(cache: Path, first: str, second: str) -> list[str]:
 
 
 class _MergeTree(BaseModel):
+    tree: str
+    """The tree the merge writes, conflict markers included where it conflicts."""
     clean: bool
     conflicted: list[str]
     submodule_or_binary: bool
@@ -243,7 +268,10 @@ def merge_tree(cache: Path, first: str, second: str) -> _MergeTree:
         binary |= kind == "CONFLICT (binary)"
         position += count + 3
     return _MergeTree(
-        clean=result.returncode == 0, conflicted=paths, submodule_or_binary=submodule or binary
+        tree=head.split("\0", 1)[0],
+        clean=result.returncode == 0,
+        conflicted=paths,
+        submodule_or_binary=submodule or binary,
     )
 
 
@@ -341,6 +369,8 @@ DescriptiveClass = Literal[
     "matches keep_local",
     "regenerated",
     "other",
+    "clean merge reproduced",
+    "clean merge changed",
 ]
 
 
@@ -349,7 +379,8 @@ class Label(BaseModel):
     acceptable: list[str]
     """The resolutions that reproduce the maintainer's lock files; empty when none does."""
     descriptive: DescriptiveClass | None
-    """The §4 class of a positive; `None` on a negative."""
+    """The §4 class of a conflicted case. A clean case's under Amendment 1 says whether the
+    maintainer's tree is the clean merge's; under the original text it is `None`."""
 
 
 def _lines(cache: Path, commit: str, path: str) -> Counter[str]:
@@ -368,9 +399,24 @@ def produced(
     raise ValueError(f"no such resolution: {resolution}")
 
 
-def label(case: Case, cache: Path) -> Label:
+def label(case: Case, cache: Path, *, amendment: int = 1) -> Label:
+    """The maintainer's label on `case`, under the registration as amended `amendment` times.
+
+    `amendment=0` is the original text, under which stage A was measured: a clean case
+    ("negative") accepts nothing. Amendment 1 (A2) accepts `merge` there when the maintainer's
+    tree is the one the clean merge writes.
+    """
     if case.kind == "negative":
-        return Label(index=case.index, acceptable=[], descriptive=None)
+        if amendment == 0:
+            return Label(index=case.index, acceptable=[], descriptive=None)
+        written = merge_tree(cache, case.first, case.second).tree
+        committed = _git(cache, "rev-parse", f"{case.merge}^{{tree}}").stdout.strip()
+        reproduced = written == committed
+        return Label(
+            index=case.index,
+            acceptable=["merge"] if reproduced else [],
+            descriptive="clean merge reproduced" if reproduced else "clean merge changed",
+        )
     locks = [path for path in case.conflicted if is_lock(path)]
     versions = [
         tuple(
@@ -510,6 +556,9 @@ class ReplicateFigures(BaseModel):
     arm2_matched: OperatingPoint | None
     control_matched: OperatingPoint | None
     arm3_fires_on_positives: int
+    fires_on_inexpressible: dict[str, int]
+    """On conflicted cases with nothing acceptable, how many each dispatcher fired on: arm 3 at
+    its own point, arm 2 and the control at their matched thresholds (Amendment 1, A3)."""
 
 
 class Disagreement(BaseModel):
@@ -553,17 +602,38 @@ def figures(
         fires = sum(d.arm3[r] is not None for d in positives)
         fired_on_positives += fires
         matchable = point.coverage.numerator > 0
+        arm2_matched = (
+            matched_comparison(sweep(arm2), point).arm2
+            if matchable and any(o.fired_variant for o in arm2)
+            else None
+        )
+        control_matched = (
+            matched_comparison(sweep(control), point).arm2
+            if matchable and any(o.fired_variant for o in control)
+            else None
+        )
+        inexpressible = [
+            i
+            for i, d in enumerate(decided)
+            if cases[d.index].kind == "positive" and not by_index[d.index].acceptable
+        ]
+        on_inexpressible = {"arm 3": sum(_fires(arm3[i], None) for i in inexpressible)}
+        for name, outcomes, matched in (
+            ("arm 2", arm2, arm2_matched),
+            ("control", control, control_matched),
+        ):
+            if matched is not None:
+                on_inexpressible[name] = sum(
+                    _fires(outcomes[i], matched.threshold) for i in inexpressible
+                )
         replicates.append(
             ReplicateFigures(
                 library=str(path),
                 arm3=point,
-                arm2_matched=matched_comparison(sweep(arm2), point).arm2
-                if matchable and any(o.fired_variant for o in arm2)
-                else None,
-                control_matched=matched_comparison(sweep(control), point).arm2
-                if matchable and any(o.fired_variant for o in control)
-                else None,
+                arm2_matched=arm2_matched,
+                control_matched=control_matched,
                 arm3_fires_on_positives=fires,
+                fires_on_inexpressible=on_inexpressible,
             )
         )
     disagreements = [
@@ -616,7 +686,8 @@ def run_pilot(out: Path, root: Path = REPOSITORY) -> StageReport:
     labels: list[Label] = []
     decided: list[Decisions] = []
     for case in manifest.cases:
-        labels.append(label(case, caches[case.repo]))
+        # Stage A was measured under the original text; Amendment 1 came after it (A7).
+        labels.append(label(case, caches[case.repo], amendment=0))
         try:
             box = build_state(case, caches[case.repo], branches[case.repo])
         except subprocess.CalledProcessError:
@@ -639,6 +710,290 @@ def run_pilot(out: Path, root: Path = REPOSITORY) -> StageReport:
         )
     (out / "summary.txt").write_text(text(report), encoding="utf-8")
     return report
+
+
+# --- Amendment 1: stage A relabelled, and stage B -------------------------------------------
+
+TARGET_CASES = 247
+"""Stage B's size, Amendment 1 A4: `ceil(144 / c)` with stage A's `c` = 77/132."""
+MIN_REPOSITORIES = 8
+CAP_SHARE = 0.25
+
+
+class Verdicts(BaseModel):
+    """One replicate's registered tests (§7, Amendment 1 A3) and §9's decisions."""
+
+    library: str
+    h1: Inference
+    h2: Inference
+    h3: Inference
+    decisions: list[Decision]
+
+
+class ConfirmatoryReport(BaseModel):
+    figures: StageReport
+    repositories: list[Repository]
+    cases: int
+    repositories_with_a_case: int
+    underpowered: bool
+    verdicts: list[Verdicts]
+    h1_supported: bool
+    """H1 holds only if it is supported in every replicate (§7)."""
+    h2_supported: bool
+    h3_supported: bool
+
+
+def _rows(
+    manifest: Manifest,
+    labels: Sequence[Label],
+    decided: Sequence[Decisions],
+    replicate: int,
+    other: Literal["arm 2", "control"],
+) -> list[Clustered]:
+    by_index = {lab.index: lab for lab in labels}
+    cases = {case.index: case for case in manifest.cases}
+    rows = []
+    for d in decided:
+        lab = by_index[d.index]
+        fired, score = d.arm2[replicate] if other == "arm 2" else d.control
+        rows.append(
+            Clustered(
+                repo=cases[d.index].repo,
+                arm3=outcome(lab, d.arm3[replicate], None),
+                other=outcome(lab, fired, score),
+                inexpressible_conflict=cases[d.index].kind == "positive" and not lab.acceptable,
+            )
+        )
+    return rows
+
+
+def verdicts(
+    manifest: Manifest,
+    labels: Sequence[Label],
+    decided: Sequence[Decisions],
+    *,
+    underpowered: bool,
+) -> list[Verdicts]:
+    """H1, H2 and H3 for each replicate, and §9's rules applied to them in order."""
+    out = []
+    for r, path in enumerate(LIBRARIES):
+        against_arm2 = _rows(manifest, labels, decided, r, "arm 2")
+        against_control = _rows(manifest, labels, decided, r, "control")
+        h1, h2 = matched_test(against_arm2), matched_test(against_control)
+        out.append(
+            Verdicts(
+                library=str(path),
+                h1=h1,
+                h2=h2,
+                h3=refusal_test(against_control),
+                decisions=decide_rules(
+                    [row.arm3 for row in against_arm2], h1, h2, underpowered=underpowered
+                ),
+            )
+        )
+    return out
+
+
+def _supported(test: Inference, underpowered: bool) -> bool:
+    return not underpowered and test.interval is not None and test.interval.low > 0
+
+
+def relabel_pilot(stage: Path, out: Path) -> ConfirmatoryReport:
+    """Stage A under Amendment 1's labels, from its committed decisions: exploratory (A7).
+
+    Nothing is re-dispatched; only the clean cases' labels change. The tests are computed the
+    way stage B's are, and the result is marked underpowered so no verdict can be read from it.
+    """
+    require(REGISTRATION)
+    if out.exists():
+        raise ValueError(f"{out} already exists; the relabel writes a fresh directory")
+    manifest = Manifest.model_validate_json((stage / "manifest.json").read_text("utf-8"))
+    decided = [
+        Decisions.model_validate_json(line)
+        for line in (stage / "decisions.jsonl").read_text("utf-8").splitlines()
+    ]
+    caches = {r.repo: fetch_real_host(host(r.repo, r.tip)) for r in manifest.repositories}
+    kept = {d.index for d in decided}
+    labels = [
+        label(case, caches[case.repo], amendment=1) for case in manifest.cases if case.index in kept
+    ]
+    report = _confirmatory_report(manifest, labels, decided, underpowered=True)
+    out.mkdir(parents=True)
+    (out / "labels.jsonl").write_text(
+        "".join(row.model_dump_json() + "\n" for row in labels), "utf-8"
+    )
+    (out / "report.json").write_text(report.model_dump_json(indent=2) + "\n", "utf-8")
+    (out / "summary.txt").write_text(confirmatory_text(report), encoding="utf-8")
+    return report
+
+
+def _confirmatory_report(
+    manifest: Manifest,
+    labels: Sequence[Label],
+    decided: Sequence[Decisions],
+    *,
+    underpowered: bool,
+) -> ConfirmatoryReport:
+    tested = verdicts(manifest, labels, decided, underpowered=underpowered)
+    with_a_case = {case.repo for case in manifest.cases if case.index in {d.index for d in decided}}
+    return ConfirmatoryReport(
+        figures=figures(manifest, labels, decided),
+        repositories=manifest.repositories,
+        cases=len(decided),
+        repositories_with_a_case=len(with_a_case),
+        underpowered=underpowered,
+        verdicts=tested,
+        h1_supported=all(_supported(v.h1, underpowered) for v in tested),
+        h2_supported=all(_supported(v.h2, underpowered) for v in tested),
+        h3_supported=all(_supported(v.h3, underpowered) for v in tested),
+    )
+
+
+def _capped(cases: list[Case], cache: Path, cap: int) -> list[Case]:
+    """At most `cap` of one repository's cases: the most recent, conflicted and clean equal."""
+    if len(cases) <= cap:
+        return cases
+
+    def recent(kind: str) -> list[Case]:
+        chosen = [case for case in cases if case.kind == kind]
+        when = {
+            case.merge: int(_git(cache, "log", "-1", "--format=%ct", case.merge).stdout.strip())
+            for case in chosen
+        }
+        return sorted(chosen, key=lambda case: (-when[case.merge], case.merge))[: cap // 2]
+
+    return recent("positive") + recent("negative")
+
+
+def run_confirmatory(out: Path, root: Path = REPOSITORY) -> ConfirmatoryReport:
+    """Stage B, under Amendment 1: mine the confirmatory list in order to `TARGET_CASES`.
+
+    Each repository is mined, labelled, built and decided in turn, written under `out/repos/`,
+    and its cache deleted before the next is fetched, so the disk holds one history at a time.
+    A repository already written is read back instead of mined again, so an interrupted run
+    resumes where it stopped.
+    """
+    require(REGISTRATION)
+    done = out / "repos"
+    done.mkdir(parents=True, exist_ok=True)
+    loaded = libraries(root)
+    classifier = control_classifier()
+    cap = int(CAP_SHARE * TARGET_CASES)
+    repositories: list[Repository] = []
+    cases: list[Case] = []
+    exclusions: list[Exclusion] = []
+    labels: list[Label] = []
+    decided: list[Decisions] = []
+    for repo in CONFIRMATORY:
+        if len(decided) >= TARGET_CASES and len({c.repo for c in cases}) >= MIN_REPOSITORIES:
+            break
+        written = done / f"{repo.replace('/', '__')}.json"
+        if written.is_file():
+            part = _RepositoryPart.model_validate_json(written.read_text("utf-8"))
+        else:
+            part = _mine_and_decide(repo, len(cases), cap, loaded, classifier)
+            written.write_text(part.model_dump_json() + "\n", "utf-8")
+        repositories.append(part.repository)
+        cases.extend(part.cases)
+        exclusions.extend(part.exclusions)
+        labels.extend(part.labels)
+        decided.extend(part.decisions)
+    manifest = Manifest(stage="B", repositories=repositories, cases=cases, exclusions=exclusions)
+    underpowered = (
+        len(decided) < TARGET_CASES
+        or len({c.repo for c in cases if c.index in {d.index for d in decided}}) < MIN_REPOSITORIES
+    )
+    report = _confirmatory_report(manifest, labels, decided, underpowered=underpowered)
+    (out / "manifest.json").write_text(manifest.model_dump_json(indent=2) + "\n", "utf-8")
+    for name, rows in (("labels", labels), ("decisions", decided)):
+        (out / f"{name}.jsonl").write_text(
+            "".join(row.model_dump_json() + "\n" for row in rows), "utf-8"
+        )
+    (out / "report.json").write_text(report.model_dump_json(indent=2) + "\n", "utf-8")
+    (out / "summary.txt").write_text(confirmatory_text(report), encoding="utf-8")
+    return report
+
+
+class _RepositoryPart(BaseModel):
+    repository: Repository
+    cases: list[Case]
+    exclusions: list[Exclusion]
+    labels: list[Label]
+    decisions: list[Decisions]
+
+
+def _mine_and_decide(
+    repo: str,
+    first_index: int,
+    cap: int,
+    loaded: Sequence[Library],
+    classifier: StateClassifier,
+) -> _RepositoryPart:
+    branch, tip = pin(repo)
+    pinned = host(repo, tip)
+    cache = fetch_real_host(pinned)
+    try:
+        summary, mined, excluded = mine(repo, cache, branch, tip)
+        kept = _capped(mined, cache, cap)
+        kept = [case.model_copy(update={"index": first_index + i}) for i, case in enumerate(kept)]
+        labels: list[Label] = []
+        decided: list[Decisions] = []
+        for case in kept:
+            try:
+                box = build_state(case, cache, branch)
+            except subprocess.CalledProcessError:
+                excluded.append(
+                    Exclusion(repo=case.repo, merge=case.merge, reason="state not built")
+                )
+                continue
+            try:
+                labels.append(label(case, cache, amendment=1))
+                decided.append(decide(case, box, loaded, classifier))
+            finally:
+                box.destroy()
+    finally:
+        shutil.rmtree(cache, ignore_errors=True)
+    return _RepositoryPart(
+        repository=summary.model_copy(
+            update={
+                "positives": sum(c.kind == "positive" for c in kept),
+                "negatives": sum(c.kind == "negative" for c in kept),
+                "exclusions": len(excluded),
+            }
+        ),
+        cases=kept,
+        exclusions=excluded,
+        labels=labels,
+        decisions=decided,
+    )
+
+
+def confirmatory_text(report: ConfirmatoryReport) -> str:
+    lines = [text(report.figures).rstrip("\n")]
+    lines.append(
+        f"  cases {report.cases} from {report.repositories_with_a_case} repositories; "
+        f"underpowered: {report.underpowered}"
+    )
+    for v in report.verdicts:
+        lines.append(f"  {v.library}:")
+        for name, test in (("H1", v.h1), ("H2", v.h2), ("H3", v.h3)):
+            interval = (
+                f"[{test.interval.low:+.3f}, {test.interval.high:+.3f}]"
+                if test.interval is not None
+                else "undefined"
+            )
+            statistic = f"{test.statistic:+.3f}" if test.statistic is not None else "undefined"
+            lines.append(
+                f"    {name}: {statistic}, 95% interval {interval}, McNemar b/c "
+                f"{test.discordant[0]}/{test.discordant[1]}, p {test.p_value}"
+            )
+        for decision in v.decisions:
+            lines.append(f"    rule {decision.rule}: {decision.outcome}")
+    lines.append(
+        f"  supported in every replicate: H1 {report.h1_supported}, H2 {report.h2_supported}, "
+        f"H3 {report.h3_supported}"
+    )
+    return "\n".join(lines) + "\n"
 
 
 def text(report: StageReport) -> str:
@@ -677,12 +1032,27 @@ def text(report: StageReport) -> str:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m precondition_library.bench.real_merges")
+    parser.add_argument("--stage", choices=("A", "B"), default="A")
     parser.add_argument(
-        "--out", type=Path, default=None, help="default: results/real-merges-<today>/stage-A"
+        "--relabel-pilot",
+        type=Path,
+        default=None,
+        metavar="STAGE_A_DIR",
+        help="recompute stage A under Amendment 1's labels, exploratory (A7)",
+    )
+    parser.add_argument(
+        "--out", type=Path, default=None, help="default: results/real-merges-<today>/stage-<x>"
     )
     args = parser.parse_args(argv)
-    out = args.out or Path(f"results/real-merges-{date.today().isoformat()}/stage-A")
-    print(text(run_pilot(out)), end="")
+    if args.relabel_pilot is not None:
+        out = args.out or args.relabel_pilot / "amendment-1-exploratory"
+        print(confirmatory_text(relabel_pilot(args.relabel_pilot, out)), end="")
+        return 0
+    out = args.out or Path(f"results/real-merges-{date.today().isoformat()}/stage-{args.stage}")
+    if args.stage == "B":
+        print(confirmatory_text(run_confirmatory(out)), end="")
+    else:
+        print(text(run_pilot(out)), end="")
     return 0
 
 
