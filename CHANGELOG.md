@@ -136,6 +136,11 @@ measured result, at pair level; everything before it is design and apparatus. Se
 
 ### Fixed
 
+- **The real-merge miner reads past git's submodule advice (#296).** After a submodule
+  conflict, `git merge-tree --messages -z` appends free text outside its message format, and
+  the parser read it as a count, which stopped stage B on wasmerio/wasmer. The advice is now read
+  as the submodule conflict it reports; any other unexpected text is refused. Such a merge was
+  already flagged by its gitlink entries, so no case changes.
 - **The gold lock-file programs resolve any path (ADR-0046).** They found nothing to do outside
   `deps.lock` and refused; they now find the conflicted file. They are unchanged on every shipped
   state, and the gold sweep now covers the held-out lock-file states.

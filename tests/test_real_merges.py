@@ -25,6 +25,7 @@ import pytest
 
 from precondition_library.bench import preregistration
 from precondition_library.bench import real_merges as rm
+from precondition_library.sandbox import run_git
 
 BASE = ["[[package]]", 'name = "alpha"', 'name = "beta"', 'version = "1"', "", "# end"]
 
@@ -323,6 +324,55 @@ def test_merge_tree_reads_a_clean_merge(history: dict[str, object]) -> None:
     clean = _case(history, "clean")
     tree = rm.merge_tree(cache, clean.first, clean.second)
     assert (tree.clean, tree.conflicted, tree.submodule_or_binary) == (True, [], False)
+
+
+def _gitlink_conflict(repo: Path) -> None:
+    """Both sides move a submodule `vendor/s` (gitlinks only, to commits the repository lacks)
+    and change `Cargo.lock`: the shape that stopped stage B on wasmerio/wasmer."""
+    run_git(("init", "-q"), cwd=repo)
+
+    def commit(lock: str, gitlink: str, message: str) -> None:
+        (repo / "Cargo.lock").write_text(lock, encoding="utf-8")
+        run_git(("add", "Cargo.lock"), cwd=repo)
+        run_git(
+            ("update-index", "--add", "--cacheinfo", f"160000,{gitlink * 40},vendor/s"), cwd=repo
+        )
+        run_git(("commit", "-q", "-m", message), cwd=repo)
+
+    commit("base\n", "1", "base")
+    run_git(("branch", "base"), cwd=repo)
+    run_git(("checkout", "-q", "-b", "one"), cwd=repo)
+    commit("one\n", "2", "one")
+    run_git(("checkout", "-q", "-b", "two", "base"), cwd=repo)
+    commit("two\n", "3", "two")
+
+
+def test_merge_tree_reads_past_gits_submodule_advice(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _gitlink_conflict(repo)
+    shown = run_git(
+        ("merge-tree", "--write-tree", "-z", "--messages", "one", "two"), cwd=repo, check=False
+    ).stdout
+    assert "Recursive merging with submodules" in shown, "the advice this test is about"
+
+    tree = rm.merge_tree(repo, "one", "two")
+    assert (tree.clean, tree.conflicted, tree.submodule_or_binary) == (
+        False,
+        ["Cargo.lock", "vendor/s"],
+        True,
+    )
+
+
+def test_merge_tree_refuses_a_message_it_does_not_know(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _gitlink_conflict(repo)
+    monkeypatch.setattr(rm, "_SUBMODULE_ADVICE", "Some other advice")
+    with pytest.raises(RuntimeError, match="unexpected message 'Recursive merging"):
+        rm.merge_tree(repo, "one", "two")
 
 
 def test_mining_refuses_without_the_registration(monkeypatch: pytest.MonkeyPatch) -> None:
