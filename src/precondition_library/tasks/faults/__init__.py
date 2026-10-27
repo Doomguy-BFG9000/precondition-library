@@ -13,6 +13,7 @@ from ...signatures import StateFingerprint
 from ..invariants import record_refs_at_start
 from ..spec import FaultSpec
 from .branch_renamed import SPEC as BRANCH_RENAMED
+from .cargo_lock_conflict import SPEC as CARGO_LOCK_CONFLICT
 from .config_renamed import SPEC as CONFIG_RENAMED
 from .dirty_tree import SPEC as DIRTY_TREE
 from .diverged import SPEC as DIVERGED
@@ -28,6 +29,7 @@ FAULTS: dict[str, FaultSpec] = {
         SUBMODULE_MOVED,
         LOCKFILE_CONFLICT,
         CONFIG_RENAMED,
+        CARGO_LOCK_CONFLICT,
     )
 }
 

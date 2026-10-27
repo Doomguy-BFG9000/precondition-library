@@ -52,7 +52,8 @@ from ...sandbox import (
     run_git,
     tip_contained,
 )
-from ..intent import sample_index
+from ...signatures import CARGO_LOCK, StateFingerprint
+from ..intent import IntentSpec, ResolutionVariant, sample_index
 from ..spec import FaultSpec, GroundTruth
 
 LOCK = "Cargo.lock"
@@ -169,6 +170,82 @@ EXPECTED: dict[str, set[tuple[str, str]]] = {
 """What a right resolution of each state resolves, by construction of the state."""
 
 
+# --- the intent (#306): rules over the package-level fingerprint fields ---------------------
+#
+# Pinned against `check` by replaying each resolution in each state
+# (`tests/test_cargo_lock_conflict.py`), as `lockfile_conflict`'s are.
+
+STATE_VARIANT = {
+    "both_added": "reconcile_upstream_lock",
+    "same_crate_bumped": "keep_local_bumps",
+    "local_removed": "reconcile_upstream_lock",
+}
+"""The resolution each state is labelled with: what `INTENT`'s rules decide."""
+
+
+def cargo_lock_conflicts(state: StateFingerprint) -> bool:
+    """The family's situation: both sides committed, and `Cargo.lock` is what conflicts."""
+    return state.sync_would_conflict and any(
+        path.rsplit("/", 1)[-1] == CARGO_LOCK for path in state.merge_conflicted_files
+    )
+
+
+VARIANTS = [
+    ResolutionVariant(
+        id="keep_local_bumps",
+        decided_by=lambda s: cargo_lock_conflicts(s) and bool(s.lock_bumped_by_both),
+        accepted_by=cargo_lock_conflicts,
+        rationale=(
+            "Keeping the local lock and moving on each crate upstream moved keeps every "
+            "version either side chose, so it is right whatever the two sides did."
+        ),
+    ),
+    ResolutionVariant(
+        id="reconcile_upstream_lock",
+        decided_by=lambda s: cargo_lock_conflicts(s) and not s.lock_bumped_by_both,
+        accepted_by=lambda s: cargo_lock_conflicts(s) and not s.lock_bumped_by_both,
+        rationale=(
+            "Where no crate was moved by both sides, upstream's lock reconciled by cargo against "
+            "the merged manifest keeps upstream's versions and takes the local side's manifest."
+        ),
+    ),
+    ResolutionVariant(
+        id="reconcile_local_lock",
+        decided_by=lambda s: False,
+        accepted_by=lambda s: (
+            cargo_lock_conflicts(s)
+            and not s.lock_bumped_by_both
+            and not s.lock_removed_here_changed_upstream
+            and not s.lock_moved_upstream_only
+        ),
+        rationale=(
+            "The local lock reconciled by cargo is right only where upstream moved no crate the "
+            "local side kept, since cargo keeps the versions a lock already names."
+        ),
+    ),
+]
+
+INTENT = IntentSpec(
+    name="sync_through_a_conflicting_cargo_lock",
+    fault="cargo_lock_conflict",
+    phrasings=[
+        "Bring this branch up to date with upstream. We both changed our Rust dependencies.",
+        "The sync stopped on a Cargo.lock conflict. Get it through without losing a version "
+        "either side chose.",
+        "Merge upstream into this branch and leave Cargo.lock consistent with Cargo.toml.",
+        "Upstream and I both moved crates on. Catch my branch up properly.",
+        "Cargo.lock conflicts when I sync. Resolve it the way this project expects.",
+    ],
+    naming_markers=["Cargo.lock", "cargo"],
+    variants=VARIANTS,
+    variant_phrasings={
+        "keep_local_bumps": ["we both bumped the same crate, and I want my version kept"],
+        "reconcile_upstream_lock": ["upstream's lock is the one to start from"],
+        "reconcile_local_lock": ["my lock is the one to start from"],
+    },
+)
+
+
 class CargoLockConflictFault(FaultSpec):
     name = "cargo_lock_conflict"
     change_surface = (MANIFEST, LOCK)
@@ -282,7 +359,17 @@ class CargoLockConflictFault(FaultSpec):
         )
 
     def task_text(self, seed: int) -> str:
-        return "Bring this branch up to date with upstream; our Cargo.lock changes collided."
+        return INTENT.task_text(seed)
+
+    def state_for_seed(self, seed: int) -> str:
+        return state_for_seed(seed)
+
+    def variant_for_seed(self, seed: int) -> str:
+        return STATE_VARIANT[state_for_seed(seed)]
+
+    def instance_for_seed(self, seed: int) -> str:
+        """One instance per state: the crates and versions are fixed, so there is no axis yet."""
+        return f"cargo_lock_conflict/{self.variant_for_seed(seed)}/{state_for_seed(seed)}"
 
 
 SPEC = CargoLockConflictFault()

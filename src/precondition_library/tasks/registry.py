@@ -10,6 +10,7 @@ counted into a rate as if it were evidence.
 from __future__ import annotations
 
 from .faults.branch_renamed import INTENT as BRANCH_RENAMED_INTENT
+from .faults.cargo_lock_conflict import INTENT as CARGO_LOCK_INTENT
 from .faults.config_renamed import INTENT as CONFIG_RENAMED_INTENT
 from .faults.dirty_tree import INTENT as DIRTY_TREE_INTENT
 from .faults.diverged import INTENT as DIVERGED_INTENT
@@ -26,6 +27,7 @@ INTENTS: dict[str, IntentSpec] = {
         BRANCH_RENAMED_INTENT,
         LOCKFILE_INTENT,
         CONFIG_RENAMED_INTENT,
+        CARGO_LOCK_INTENT,
     )
 }
 

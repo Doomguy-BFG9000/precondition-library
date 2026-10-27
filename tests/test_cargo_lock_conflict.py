@@ -196,3 +196,54 @@ def test_a_sandbox_without_a_toolchain_gets_no_cargo_variables(tmp_path) -> None
         assert not {"RUSTUP_HOME", "CARGO_HOME", "RUSTUP_TOOLCHAIN"} & set(run_env(box))
     finally:
         box.destroy()
+
+
+# --- the intent's rules agree with the checker (#306) ----------------------------------------
+
+VARIANT_ACTION = {
+    "keep_local_bumps": "keep_local_bumps",
+    "reconcile_upstream_lock": "reconcile_upstream",
+    "reconcile_local_lock": "reconcile_local",
+}
+"""Each variant, as the action that performs it."""
+
+
+def _keep_local_bumps(box: Sandbox) -> None:
+    """The generic form: the local lock, reconciled, then every crate only upstream moved."""
+    from precondition_library.signatures import StateFingerprint
+
+    moved = StateFingerprint.observe(box).lock_moved_upstream_only
+    work = box.work
+    run_git(("merge", "--no-edit", "upstream/main"), cwd=work, check=False)
+    run_git(("checkout", "--ours", "--", fault.LOCK), cwd=work)
+    fault.cargo(work, "update", "--workspace")
+    for crate in moved:
+        fault.cargo(work, "update", "-p", crate)
+    run_git(("add", "-A"), cwd=work)
+    run_git(("commit", "-q", "--no-edit"), cwd=work)
+
+
+@pytest.mark.parametrize("state", fault.INJECTED_STATES)
+def test_the_rules_label_each_state_as_declared(state: str, built) -> None:
+    from precondition_library.signatures import StateFingerprint
+
+    observed = StateFingerprint.observe(built(state))
+    decided = fault.INTENT.correct_variant(observed)
+    assert decided is not None and decided.id == fault.STATE_VARIANT[state]
+
+
+@pytest.mark.parametrize("state", fault.INJECTED_STATES)
+@pytest.mark.parametrize("variant", sorted(VARIANT_ACTION))
+def test_a_variant_is_acceptable_exactly_where_its_action_passes(
+    state: str, variant: str, built
+) -> None:
+    from precondition_library.signatures import StateFingerprint
+
+    box = built(state)
+    acceptable = variant in fault.INTENT.acceptable_variants(StateFingerprint.observe(box))
+    if variant == "keep_local_bumps":
+        _keep_local_bumps(box)
+    else:
+        _resolve(box, VARIANT_ACTION[variant])
+    verdict = _grade(box, state)
+    assert verdict.ok == acceptable, f"{state}/{variant}: {verdict.detail}"
