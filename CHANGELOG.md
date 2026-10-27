@@ -136,6 +136,11 @@ measured result, at pair level; everything before it is design and apparatus. Se
 
 ### Fixed
 
+- **A probe's read-only check no longer re-reads an unchanged repository (#296).** The sandbox
+  snapshot taken around every probe read every file each time, 0.69 s per snapshot of a
+  real checkout such as phpMyAdmin's, which left stage B of the real-merge study running for
+  hours on one repository. A file's digest is reused while its `stat`, ctime included, is
+  unchanged (0.04 s); the snapshot itself is the same, part for part.
 - **The gold lock-file programs resolve any path (ADR-0046).** They found nothing to do outside
   `deps.lock` and refused; they now find the conflicted file. They are unchanged on every shipped
   state, and the gold sweep now covers the held-out lock-file states.
