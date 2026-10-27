@@ -44,7 +44,14 @@ import os
 import subprocess
 from pathlib import Path
 
-from ...sandbox import Sandbox, git_out, record_base, run_git, tip_contained
+from ...sandbox import (
+    Sandbox,
+    git_out,
+    provide_rust_toolchain,
+    record_base,
+    run_git,
+    tip_contained,
+)
 from ..intent import sample_index
 from ..spec import FaultSpec, GroundTruth
 
@@ -183,6 +190,8 @@ class CargoLockConflictFault(FaultSpec):
     def inject(self, seed: int, sandbox: Sandbox) -> None:
         work = sandbox.work
         state = state_for_seed(seed)
+        if not provide_rust_toolchain(sandbox):
+            raise RuntimeError(f"{self.name} needs a Rust toolchain (cargo) on this host")
 
         # The shared ancestor, committed and published *before* the base is recorded: the
         # vendored crates, the crate depending on alder and birch, and the lock cargo writes for

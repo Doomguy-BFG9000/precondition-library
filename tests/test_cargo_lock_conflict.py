@@ -153,3 +153,46 @@ def test_the_same_seed_builds_the_same_commits() -> None:
         assert (git_out("rev-parse", "HEAD", cwd=second.work), second.recorded["local-tip"]) == tips
     finally:
         second.destroy()
+
+
+# --- a body may call cargo, through homes inside the sandbox (ADR-0051) ----------------------
+
+
+def test_a_confined_body_resolves_a_state_with_cargo(built) -> None:
+    """The way a learned program runs: a shell body, confined, under `run_env` only."""
+    from precondition_library.runtime.confine import run_confined
+    from precondition_library.runtime.replay import SHELL
+    from precondition_library.sandbox import run_env
+
+    box = built("same_crate_bumped")
+    body = (
+        "git merge --no-edit upstream/main || true\n"
+        "git checkout --ours -- Cargo.lock\n"
+        "cargo update -p alder\n"
+        "git add -A\n"
+        "git commit -q --no-edit\n"
+    )
+    ran = run_confined([*SHELL, body], cwd=box.work, env=run_env(box), timeout_s=300)
+    assert ran.returncode == 0, ran.stderr
+    verdict = _grade(box, "same_crate_bumped")
+    assert verdict.ok, verdict.detail
+
+
+def test_the_cargo_variables_name_only_the_sandbox(built) -> None:
+    from precondition_library.sandbox import run_env
+
+    box = built("both_added")
+    env = run_env(box)
+    for name in ("RUSTUP_HOME", "CARGO_HOME"):
+        assert env[name].startswith(str(box.root)), (name, env[name])
+    assert env["CARGO_NET_OFFLINE"] == "true"
+
+
+def test_a_sandbox_without_a_toolchain_gets_no_cargo_variables(tmp_path) -> None:
+    from precondition_library.sandbox import run_env
+
+    box = create(0, [])
+    try:
+        assert not {"RUSTUP_HOME", "CARGO_HOME", "RUSTUP_TOOLCHAIN"} & set(run_env(box))
+    finally:
+        box.destroy()
