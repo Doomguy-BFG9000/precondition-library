@@ -17,7 +17,8 @@ measured result, at pair level; everything before it is design and apparatus. Se
   with no network, in three states that each need a different action, one of them the
   version-unification case found in real merges. It is graded by package set and by cargo's
   own acceptance, and comes with fingerprint fields, an intent, and gold programs that run
-  cargo. A sandbox can now provide cargo to a program without exposing the operator's home.
+  cargo. It is not registered yet, so it enters no measurement. A sandbox can now provide
+  cargo to a program without exposing the operator's home.
 - **Lock-file actions, measured package by package (#306, exploratory).**
   `bench.lock_actions` reads lock files into their `(package, version)` sets. On stage A's 30
   real conflicts, some action reproduces the maintainer's lock file on 10, where stage A's line
