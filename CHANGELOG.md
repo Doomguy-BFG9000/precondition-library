@@ -12,6 +12,14 @@ measured result, at pair level; everything before it is design and apparatus. Se
 
 ### Added
 
+- **The graders are mutation-tested, and their properties tested on generated states (#299).**
+  `bench.grader_mutation` made 171 mutants of every grader. 133 were killed, and 30 only change a
+  verdict's message. Of the 8 that could change a verdict, 5 named failure clauses no test
+  exercised, in `config_renamed` and `submodule_moved`. Each now has a test that kills it, and the
+  other 3 are equivalent. An earlier partial run found that `recorded_state_intact` accepted a diff
+  it could not read; it now refuses one. Hypothesis properties check the `lockfile_conflict` and
+  `dirty_tree` graders on 300 generated states each, none failing. The runner writes each result
+  as it finishes and resumes a stopped run.
 - **Stage B of the real-merge study (#296, ADR-0052).** 274 real lock-file merges from 11
   repositories, measured as registered. Arm 3's mismatch on real merges is 0.08-0.54 by library,
   so "arm 3 rarely mis-fires" is falsified there (§9 rule 2). H1-H3 hold as registered, but H2's
