@@ -148,6 +148,9 @@ measured result, at pair level; everything before it is design and apparatus. Se
   real checkout such as phpMyAdmin's, which left stage B of the real-merge study running for
   hours on one repository. A file's digest is reused while its `stat`, ctime included, is
   unchanged (0.04 s); the snapshot itself is the same, part for part.
+- **The real-merge miner reads a licence directory (#296).** nextcloud/server keeps REUSE's
+  `LICENSES/`, a directory, and reading it as a file stopped stage B. Licence files are now read
+  one level down. The licence is only recorded in the manifest; no case or decision depends on it.
 - **The gold lock-file programs resolve any path (ADR-0046).** They found nothing to do outside
   `deps.lock` and refused; they now find the conflicted file. They are unchanged on every shipped
   state, and the gold sweep now covers the held-out lock-file states.
