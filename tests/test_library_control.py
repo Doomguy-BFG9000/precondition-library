@@ -131,3 +131,13 @@ def test_a_stage_without_every_state_is_refused(tmp_path: Path) -> None:
 def test_a_state_that_did_not_rebuild_is_refused(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="did not rebuild"):
         lc.compare(_stage(tmp_path, matches=False))
+
+
+def test_the_committed_compressed_states_are_read(tmp_path: Path) -> None:
+    import gzip
+
+    stage = _stage(tmp_path)
+    plain = stage / "states.jsonl"
+    (stage / "states.jsonl.gz").write_bytes(gzip.compress(plain.read_bytes()))
+    plain.unlink()
+    assert lc.compare(stage).fired == {"merge": 2}

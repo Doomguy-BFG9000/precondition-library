@@ -16,6 +16,7 @@ written, and the control was written because of what stage B showed. It reads th
 from __future__ import annotations
 
 import argparse
+import gzip
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -64,6 +65,18 @@ class LibraryControlReport(BaseModel):
     replicates: list[Replicate]
 
 
+def _state_lines(stage: Path) -> list[str]:
+    """`states.jsonl` as `observe_states` writes it, or `states.jsonl.gz` as it is committed."""
+    plain, packed = stage / "states.jsonl", stage / "states.jsonl.gz"
+    if plain.exists():
+        text = plain.read_text(encoding="utf-8")
+    elif packed.exists():
+        text = gzip.decompress(packed.read_bytes()).decode("utf-8")
+    else:
+        raise ValueError(f"{stage}: no recorded state for any case; run observe first")
+    return [line for line in text.splitlines() if line.strip()]
+
+
 def _read(stage: Path) -> tuple[Manifest, list[Label], list[Decisions], list[ObservedState]]:
     def rows(name: str) -> list[str]:
         return [
@@ -73,7 +86,7 @@ def _read(stage: Path) -> tuple[Manifest, list[Label], list[Decisions], list[Obs
     manifest = Manifest.model_validate_json((stage / "manifest.json").read_text("utf-8"))
     labels = [Label.model_validate_json(line) for line in rows("labels.jsonl")]
     decided = [Decisions.model_validate_json(line) for line in rows("decisions.jsonl")]
-    states = [ObservedState.model_validate_json(line) for line in rows("states.jsonl")]
+    states = [ObservedState.model_validate_json(line) for line in _state_lines(stage)]
     return manifest, labels, decided, states
 
 
