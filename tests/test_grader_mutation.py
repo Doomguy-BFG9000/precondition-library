@@ -119,3 +119,68 @@ def test_a_mutant_inside_a_verdicts_message_is_marked_and_left_out_of_the_score(
     report = gm.summarise(results, 1.0)
     assert (report.mutants, report.message_only, report.survived) == (8, 5, 6)
     assert report.score == pytest.approx(2 / 3)
+
+
+# --- a stopped run resumes from what it wrote -------------------------------------------------
+
+
+def _fake_selection(outcomes: list[str], monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Replace the pytest run: the baseline passes, then each call returns the next outcome."""
+    seen: list[str] = []
+
+    def selection(timeout: float, workers: int) -> tuple[str, float]:
+        seen.append((gm.REPOSITORY / "toy.py").read_text(encoding="utf-8"))
+        return ("survived", 1.0) if len(seen) == 1 else (outcomes[len(seen) - 2], 1.0)
+
+    monkeypatch.setattr(gm, "_run_selection", selection)
+    return seen
+
+
+def test_each_result_is_written_as_it_finishes(
+    toy: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    total = len(gm.mutants())
+    _fake_selection(["killed"] * total, monkeypatch)
+    out = tmp_path / "out"
+    report = gm.run(out, limit=3)
+    lines = (out / "results.jsonl").read_text(encoding="utf-8").splitlines()
+    assert [gm.MutantResult.model_validate_json(line) for line in lines] == report.results
+    assert len(lines) == 3 and (out / "report.json").exists()
+
+
+def test_a_stopped_run_resumes_where_it_stopped(
+    toy: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listed = gm.mutants()
+    out = tmp_path / "out"
+    _fake_selection(["killed", "survived"], monkeypatch)
+    gm.run(out, limit=2)
+    (out / "report.json").unlink()  # as if stopped before the end
+
+    ran = _fake_selection(["killed"] * len(listed), monkeypatch)
+    report = gm.run(out, resume=True)
+    assert len(ran) == len(listed) - 2, "only the mutants not yet run, and no second baseline"
+    assert [r.outcome for r in report.results[:2]] == ["killed", "survived"]
+    assert len(report.results) == len(listed)
+    assert (toy / "toy.py").read_text(encoding="utf-8") == TOY, "the source is restored"
+
+
+def test_resuming_after_the_source_changed_is_refused(
+    toy: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = tmp_path / "out"
+    _fake_selection(["killed", "killed"], monkeypatch)
+    gm.run(out, limit=2)
+    (toy / "toy.py").write_text(TOY.replace("n == 3 or ", ""), encoding="utf-8")
+    with pytest.raises(ValueError, match="source changed"):
+        gm.run(out, resume=True)
+
+
+def test_a_fresh_run_refuses_an_existing_directory_and_resume_needs_one(
+    toy: Path, tmp_path: Path
+) -> None:
+    (tmp_path / "taken").mkdir()
+    with pytest.raises(ValueError, match="already exists"):
+        gm.run(tmp_path / "taken")
+    with pytest.raises(ValueError, match="no started run"):
+        gm.run(tmp_path / "nothing", resume=True)

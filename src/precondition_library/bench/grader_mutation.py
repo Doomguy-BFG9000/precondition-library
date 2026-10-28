@@ -17,6 +17,8 @@ integer constant moved by one. Each mutant is written over the module's source, 
 runs with `-x`, and the original is restored whatever happens.
 
     python -m precondition_library.bench.grader_mutation --out results/grader-mutation-<date>
+
+Each result is appended to `results.jsonl` as it finishes; `--resume` continues a stopped run.
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ from __future__ import annotations
 import argparse
 import ast
 import copy
+import hashlib
 import json
 import subprocess
 import sys
@@ -278,34 +281,89 @@ def _run_selection(timeout: float, workers: int) -> tuple[str, float]:
     return outcome, time.monotonic() - started
 
 
-def run(out: Path, *, workers: int = 4, limit: int | None = None) -> MutationReport:
-    """Run the selection once clean, then once per mutant; write `out/report.json`."""
-    if out.exists():
-        raise ValueError(f"{out} already exists; the run writes a fresh directory")
-    # The baseline runs on the targets as `ast.unparse` writes them, unmutated, so a mutant's
-    # outcome is the mutation's and never the rewrite's.
-    originals = {path: (REPOSITORY / path).read_text(encoding="utf-8") for path in TARGETS}
-    try:
-        for path, text in originals.items():
-            (REPOSITORY / path).write_text(ast.unparse(ast.parse(text)) + "\n", encoding="utf-8")
-        baseline, seconds = _run_selection(timeout=3600, workers=workers)
-    finally:
-        for path, text in originals.items():
-            (REPOSITORY / path).write_text(text, encoding="utf-8")
-    if baseline != "survived":
-        raise RuntimeError("the selection fails on the unmutated, rewritten graders; fix that")
-    timeout = max(120.0, 3 * seconds)
-    results = []
-    for mutant in mutants()[:limit]:
-        source = REPOSITORY / mutant.path
-        original = source.read_text(encoding="utf-8")
+def _same_mutant(result: MutantResult, mutant: Mutant) -> bool:
+    return (result.path, result.function, result.line, result.kind) == (
+        mutant.path,
+        mutant.function,
+        mutant.line,
+        mutant.kind,
+    )
+
+
+def _sources() -> dict[str, str]:
+    """Each target's SHA-256, so a resumed run can prove it mutates what the first part did."""
+    return {path: hashlib.sha256((REPOSITORY / path).read_bytes()).hexdigest() for path in TARGETS}
+
+
+def _done(out: Path, listed: Sequence[Mutant]) -> tuple[float, list[MutantResult]]:
+    """The baseline time and the results an interrupted run already wrote. A target whose
+    source changed since the run started, or a result naming another mutant, is refused."""
+    started = json.loads((out / "baseline.json").read_text(encoding="utf-8"))
+    if started.get("sources") != _sources():
+        raise ValueError(
+            f"{out}: a target's source changed since the run started, so start a fresh one"
+        )
+    baseline = started["seconds"]
+    progress = out / "results.jsonl"
+    lines = progress.read_text(encoding="utf-8").splitlines() if progress.exists() else []
+    results = [MutantResult.model_validate_json(line) for line in lines if line.strip()]
+    for position, result in enumerate(results):
+        if position >= len(listed) or not _same_mutant(result, listed[position]):
+            raise ValueError(
+                f"{out}: result {position} is not the mutant now listed there; the source "
+                f"changed since the run started, so start a fresh one"
+            )
+    return float(baseline), results
+
+
+def run(
+    out: Path, *, workers: int = 4, limit: int | None = None, resume: bool = False
+) -> MutationReport:
+    """Run the selection once clean, then once per mutant; write `out/report.json`.
+
+    Each result is appended to `out/results.jsonl` as its mutant finishes, so a run stopped
+    part way (a restarted machine) loses at most the mutant in flight: `resume` reads those
+    results back, checks each still names the same mutant, and runs only the rest.
+    """
+    listed = mutants()[:limit]
+    if resume:
+        if not (out / "baseline.json").exists():
+            raise ValueError(f"{out} holds no started run to resume")
+        seconds, results = _done(out, listed)
+    else:
+        if out.exists():
+            raise ValueError(f"{out} already exists; the run writes a fresh directory")
+        # The baseline runs on the targets as `ast.unparse` writes them, unmutated, so a
+        # mutant's outcome is the mutation's and never the rewrite's.
+        originals = {path: (REPOSITORY / path).read_text(encoding="utf-8") for path in TARGETS}
         try:
-            source.write_text(mutated_source(mutant), encoding="utf-8")
-            outcome, took = _run_selection(timeout, workers)
+            for path, text in originals.items():
+                (REPOSITORY / path).write_text(
+                    ast.unparse(ast.parse(text)) + "\n", encoding="utf-8"
+                )
+            baseline, seconds = _run_selection(timeout=3600, workers=workers)
         finally:
-            source.write_text(original, encoding="utf-8")
-        results.append(
-            MutantResult(
+            for path, text in originals.items():
+                (REPOSITORY / path).write_text(text, encoding="utf-8")
+        if baseline != "survived":
+            raise RuntimeError("the selection fails on the unmutated, rewritten graders; fix that")
+        out.mkdir(parents=True)
+        (out / "baseline.json").write_text(
+            json.dumps({"seconds": round(seconds, 1), "sources": _sources()}) + "\n",
+            encoding="utf-8",
+        )
+        results = []
+    timeout = max(120.0, 3 * seconds)
+    with (out / "results.jsonl").open("a", encoding="utf-8") as progress:
+        for mutant in listed[len(results) :]:
+            source = REPOSITORY / mutant.path
+            original = source.read_text(encoding="utf-8")
+            try:
+                source.write_text(mutated_source(mutant), encoding="utf-8")
+                outcome, took = _run_selection(timeout, workers)
+            finally:
+                source.write_text(original, encoding="utf-8")
+            result = MutantResult(
                 path=mutant.path,
                 function=mutant.function,
                 line=mutant.line,
@@ -314,12 +372,14 @@ def run(out: Path, *, workers: int = 4, limit: int | None = None) -> MutationRep
                 outcome=outcome,
                 seconds=round(took, 1),
             )
-        )
-        print(
-            f"{outcome:8} {mutant.path}:{mutant.line} {mutant.function} {mutant.kind}", flush=True
-        )
+            results.append(result)
+            progress.write(result.model_dump_json() + "\n")
+            progress.flush()
+            print(
+                f"{outcome:8} {mutant.path}:{mutant.line} {mutant.function} {mutant.kind}",
+                flush=True,
+            )
     report = summarise(results, round(seconds, 1))
-    out.mkdir(parents=True)
     (out / "report.json").write_text(report.model_dump_json(indent=2) + "\n", encoding="utf-8")
     return report
 
@@ -329,6 +389,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--list", action="store_true", help="list the mutants and stop")
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="continue a run in --out that was stopped, from its results.jsonl",
+    )
     parser.add_argument(
         "--classify",
         type=Path,
@@ -348,7 +413,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"{mutant.path}:{mutant.line} {mutant.function} {mutant.kind}")
         print(json.dumps({"mutants": len(listed)}))
         return 0
-    report = run(args.out, workers=args.workers)
+    report = run(args.out, workers=args.workers, resume=args.resume)
     print(json.dumps({k: v for k, v in report.model_dump().items() if k != "results"}))
     return 0
 
