@@ -129,6 +129,9 @@ WHOLE_HISTORY = 1_000_000
 """A fetch depth past any listed repository's history, so every merge base is reachable."""
 
 _SUBMODULE_MODE = "160000"
+_SUBMODULE_ADVICE = "Recursive merging with submodules"
+"""How git (2.43) begins the free-text advice it appends to `merge-tree --messages` after a
+submodule conflict, outside the `-z` message format."""
 
 
 def is_lock(path: str) -> bool:
@@ -266,7 +269,10 @@ def merge_tree(cache: Path, first: str, second: str) -> _MergeTree:
     """`git merge-tree --write-tree -z --messages`, which writes nothing, parsed.
 
     After the tree come the conflicted entries, `<mode> <oid> <stage>\\t<path>`, an empty entry,
-    then each message as a path count, the paths, a type and the text.
+    then each message as a path count, the paths, a type and the text. When a submodule
+    conflicted, git then appends free text, outside that format, advising how to merge
+    submodules by hand; it is read as the submodule conflict it reports, and any other text
+    there is refused rather than skipped.
     """
     result = _git(
         cache, "merge-tree", "--write-tree", "-z", "--messages", first, second, check=False
@@ -281,6 +287,13 @@ def merge_tree(cache: Path, first: str, second: str) -> _MergeTree:
     binary = False
     position = 0
     while position < len(fields) and fields[position]:
+        if not fields[position].isdigit():
+            if not fields[position].startswith(_SUBMODULE_ADVICE):
+                raise RuntimeError(
+                    f"merge-tree {first} {second}: unexpected message {fields[position][:80]!r}"
+                )
+            submodule = True
+            break
         count = int(fields[position])
         kind = fields[position + 1 + count]
         binary |= kind == "CONFLICT (binary)"
