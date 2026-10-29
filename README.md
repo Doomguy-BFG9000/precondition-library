@@ -16,12 +16,14 @@ This library tests two ways to decide whether a saved fix should run: inspect
 the repository, or choose the fix whose description sounds most similar. On
 states made by this project, the checks chose the wrong fix 0 times in 563
 attempts; three text methods were wrong on 71–90% of their attempts. On new
-generated names and paths, the checks chose wrongly 42 of the 581 times they acted,
-all involving a file name with a space or a non-ASCII character. That near-zero
-rate did not carry over to 274 real lock-file merges: depending on the library,
-the checks were wrong on 8–54% of their attempts, although still less often than
-text similarity when both methods acted equally often. This does not yet measure
-complete task runs. Read [Results graded outside this project](#results-graded-outside-this-project),
+generated names, paths and history shapes, the checks chose wrongly 42 of the 581
+times they acted, all involving a file name with a space or a non-ASCII character.
+On 274 real lock-file merges, graded by what each maintainer committed, the checks
+were wrong on 8–54% of their attempts, depending on the library. That is still less
+often than text similarity when both acted equally often, but mostly because the
+checks chose a plain merge where there was no conflict; on the real conflicts,
+every method was almost always wrong. This does not yet measure complete task runs.
+Read [Results graded outside this project](#results-graded-outside-this-project),
 [Primary result](#primary-result), [Held-out states](#held-out-states),
 [Running it](#running-it), and the [issue tracker](https://github.com/Shyboy0499/precondition-library/issues).
 
