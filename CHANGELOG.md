@@ -12,6 +12,12 @@ measured result, at pair level; everything before it is design and apparatus. Se
 
 ### Added
 
+- **A library-scoped state-reading control, and stage B's states recorded (ADR-0052,
+  exploratory).** `StateClassifier.decide_library` may fire any intent's resolution, as arm 3 may.
+  `real_merges --observe-states` rebuilt all 274 stage-B states, each checked against the run's
+  recorded control decision (274 of 274 agree). On those states the library-scoped control is right
+  on clean merges as often as arm 3, but fires on every conflict, where two of three libraries
+  mostly decline. Refusal is what separates them. Exploratory: the data had been seen.
 - **Stage B of the real-merge study (#296, ADR-0052).** 274 real lock-file merges from 11
   repositories, measured as registered. Arm 3's mismatch on real merges is 0.08-0.54 by library,
   so "arm 3 rarely mis-fires" is falsified there (§9 rule 2). H1-H3 hold as registered, but H2's
