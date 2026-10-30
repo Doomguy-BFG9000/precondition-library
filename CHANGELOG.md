@@ -12,6 +12,18 @@ measured result, at pair level; everything before it is design and apparatus. Se
 
 ### Added
 
+- **A technical report (`paper/`).** An 8-page LaTeX report covers the synthetic primary result,
+  study 1 on real lock-file merges (including the falsified claim and the control's scope flaw),
+  the grader checks, and study 2's registered design. It discloses the use of generative AI.
+  `paper/SUBMITTING.md` says how to build it, what only the author can do to submit it, and what to
+  check first. The author block is kept out of the repository.
+- **Study 2's offline code (refusal-population §4 step 2, #307).** Builds can be ordered:
+  `bench.live --build-order b` permutes the admit-set plan with seed `b`, both the resolutions and
+  each resolution's seeds, and `build.json` records `order`. `StateClassifier.fit(states,
+  refusals=...)` fits Control-R, labelling each refusal state "fire nothing" for every intent.
+  `bench.refusal_population` computes the registered statistics: H1–H4, the two-level bootstrap
+  over repositories and builds, and §9's decision rules in order. No build has run. Refusal-tested
+  admission, mining the refusal set and the runner come in a later change.
 - **A library-scoped state-reading control, and stage B's states recorded (ADR-0052,
   exploratory).** `StateClassifier.decide_library` may fire any intent's resolution, as arm 3 may.
   `real_merges --observe-states` rebuilt all 274 stage-B states, each checked against the run's
